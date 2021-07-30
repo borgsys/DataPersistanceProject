@@ -3,25 +3,39 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
+
 
 public class MainManager : MonoBehaviour
 {
+    //public static MainManager Instance; // Keeps static instance of MainManager
     public Brick BrickPrefab;
     public int LineCount = 6;
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public Text HighscoreText;
+    public InputField HighscoreNameInput;
+
     public GameObject GameOverText;
     
     private bool m_Started = false;
     private int m_Points;
+    private bool m_Typing = false;
     
+
     private bool m_GameOver = false;
 
-    
+    public static int Highscore;
+    public static string HighscoreName;
+
+
     // Start is called before the first frame update
     void Start()
     {
+        LoadHighscore();
+        DisplayHighscore();
+        Debug.Log(Application.persistentDataPath);
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
         
@@ -36,6 +50,9 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+        
+        
+
     }
 
     private void Update()
@@ -55,7 +72,7 @@ public class MainManager : MonoBehaviour
         }
         else if (m_GameOver)
         {
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetKeyDown(KeyCode.Space) && !m_Typing)
             {
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
@@ -72,5 +89,66 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+        if (m_Points > Highscore)
+        {
+            SetNewHighscore(m_Points);
+        }
     }
+
+    public void SetNewHighscore(int newscore)
+    {
+        Highscore = m_Points;
+        HighscoreNameInput.gameObject.SetActive(true);
+        HighscoreNameInput.ActivateInputField();
+        m_Typing = true;
+        //DisplayHighscore();
+    }
+
+    public void NewHighscoreNameSet()
+    {
+        HighscoreName = HighscoreNameInput.text;
+        HighscoreNameInput.gameObject.SetActive(false);
+        m_Typing = false;
+        DisplayHighscore();
+        SaveHighscore();
+    }
+
+    void DisplayHighscore()
+    {
+        HighscoreText.text = "Best score : " + HighscoreName + " : " + Highscore;
+    }
+
+    [System.Serializable]
+    class SaveData
+    {
+        public int Highscore;
+        public string HighscoreName;
+    }
+
+    public void SaveHighscore()
+    {
+        SaveData data = new SaveData();
+        data.Highscore = Highscore;
+        data.HighscoreName = HighscoreName;
+
+        string json = JsonUtility.ToJson(data);
+
+        File.WriteAllText(Application.persistentDataPath + "/savefile.json", json);
+    }
+
+    public void LoadHighscore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+
+            Highscore = data.Highscore;
+            HighscoreName = data.HighscoreName;
+        }
+        DisplayHighscore();
+    }
+
+
 }
